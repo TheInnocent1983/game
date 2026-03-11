@@ -1,0 +1,14 @@
+# Godot 4.x
+.godot/
+*.import
+export_presets.cfg.bak
+
+# .NET / C#
+# We WANT the .sln and .csproj, but NOT the folders below:
+bin/
+obj/
+.vs/
+.vscode/
+
+# Build folder
+build/
