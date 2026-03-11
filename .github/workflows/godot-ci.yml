@@ -93,15 +93,15 @@ jobs:
     permissions: write-all
 
     steps:
-      - name: Download Artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
+        with:
+            path: artifacts
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            linux-build/*
-            windows-build/*
+          files: |artifacts/**/*
           tag_name: ${{ github.ref_name }}
           name: "Build ${{ github.ref_name }}"
           draft: false
