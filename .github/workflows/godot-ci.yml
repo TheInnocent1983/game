@@ -101,7 +101,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: |
+            linux-build/*
+            windows-build/*
           tag_name: ${{ github.ref_name }}
           name: "Build ${{ github.ref_name }}"
           draft: false
