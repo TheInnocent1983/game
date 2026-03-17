@@ -75,7 +75,7 @@ public partial class Player : CharacterBody3D
 	public override void _PhysicsProcess(double delta)
 	{
 		Vector3 velocity = Velocity;
-    float fDelta = (float)delta;
+    	float fDelta = (float)delta;
 
     // 1. Check if we can climb
     // Requirements: Touching a wall, pressing "Forward", and has time left
@@ -106,7 +106,6 @@ public partial class Player : CharacterBody3D
 		if (Input.IsActionJustPressed("ui_cancel"))
 			GetTree().Quit();
 		
-		Vector3 velocity = Velocity;
 		float currentSpeed = Speed;
 		
 		// 1. Check for Toggle Input
