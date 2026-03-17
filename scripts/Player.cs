@@ -14,6 +14,10 @@ public partial class Player : CharacterBody3D
 	
 	[ExportGroup("Mouse Sensitivity")]
 	[Export] public float Sensitivity = 0.003f;
+
+	[ExportGroup("Climbing Settings")]
+	[Export] public float WallClimbSpeed = 4.0f;
+	[Export] public float MaxClimbTime = 3.0f;
 	
 	[ExportGroup("FOV Settings")]
 	[Export] public bool UseDynamicFov = false;
@@ -31,6 +35,9 @@ public partial class Player : CharacterBody3D
 	private float CrouchHeight = 0.5f;
 	private float CrouchTransitionSpeed = 10.0f;
 	private float FovChangeSpeed = 8.0f;
+
+	private float _climbTimer = 0.0f;
+	private bool _isClimbing = false;
 	
 	// Gravity pulled from project settings
 	public float gravity = ProjectSettings.GetSetting("physics/3d/default_gravity").AsSingle();
@@ -67,6 +74,35 @@ public partial class Player : CharacterBody3D
 	
 	public override void _PhysicsProcess(double delta)
 	{
+		Vector3 velocity = Velocity;
+    float fDelta = (float)delta;
+
+    // 1. Check if we can climb
+    // Requirements: Touching a wall, pressing "Forward", and has time left
+    bool wantsToClimb = IsOnWall() && Input.IsActionPressed("move_forward") && _climbTimer < MaxClimbTime;
+
+    if (wantsToClimb)
+    {
+        _isClimbing = true;
+        _climbTimer += fDelta;
+        velocity.Y = WallClimbSpeed; // Move up
+    }
+    else
+    {
+        _isClimbing = false;
+        // Reset timer only when touching the floor
+        if (IsOnFloor())
+        {
+            _climbTimer = 0.0f;
+        }
+
+        // Apply normal gravity if not climbing
+        if (!IsOnFloor())
+        {
+            velocity += GetGravity() * fDelta;
+        }
+    }
+
 		if (Input.IsActionJustPressed("ui_cancel"))
 			GetTree().Quit();
 		
