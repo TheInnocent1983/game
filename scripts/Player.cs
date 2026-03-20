@@ -28,6 +28,10 @@ public partial class Player : CharacterBody3D
 	[Export] public float SprintFov = 120.0f;
 	[Export] public float ConstantFov = 100.0f;
 	
+	[ExportGroup("Climbing Settings")]
+	[Export] public float WallClimbSpeed = 4.0f;
+	[Export] public float MaxClimbTime = 3.0f;
+	
 	// These represents the "Head" and "Camera" nodes
 	private Node3D _head;
 	private Camera3D _camera;
@@ -38,6 +42,11 @@ public partial class Player : CharacterBody3D
 	private float CrouchHeight = 0.5f;
 	private float CrouchTransitionSpeed = 10.0f;
 	private float FovChangeSpeed = 8.0f;
+	private float _climbTimer = 0.0f;
+	private bool _isClimbing = false;
+	
+	// Reference
+	private WeaponManager _weaponManager;
 	
 	// Gravity pulled from project settings
 	public float gravity = ProjectSettings.GetSetting("physics/3d/default_gravity").AsSingle();
@@ -51,6 +60,9 @@ public partial class Player : CharacterBody3D
 		
 		Input.MouseMode = Input.MouseModeEnum.Captured;
 		_defaultHeadY = _head.Position.Y;
+		
+		// Reference
+		_weaponManager = GetNode<WeaponManager>("Head/Camera3D/WeaponManager");
 	}
 	
 	public override void _UnhandledInput(InputEvent @event)
@@ -71,6 +83,16 @@ public partial class Player : CharacterBody3D
 			GetTree().Quit();
 		
 		Vector3 velocity = Velocity;
+		float fDelta = (float)delta;
+		
+		Vector3 playerForward = -GlobalTransform.Basis.Z;
+		Vector3 wallNormal = GetWallNormal();
+		
+		float alignment = playerForward.Dot(wallNormal);
+		bool isFacingWall = alignment < -0.5f;
+		
+		bool wantsToClimb = IsOnWall() && !IsOnFloor() && isFacingWall && Input.IsActionPressed("move_forward") && _climbTimer < MaxClimbTime;	
+		
 		float currentSpeed = Speed;
 		Vector3 headPos = _head.Position;
 		var capsule = _collisionShape.Shape as CapsuleShape3D;
@@ -122,12 +144,14 @@ public partial class Player : CharacterBody3D
 		}
 
 		// 3. SPEED RESOLUTION
+		float weaponMod = _weaponManager.GetCurrentWeapon().SpeedMultiplier;
+		
 		if (_isSliding)
 			currentSpeed = _currentSlideSpeed;
 		else if (wantsToCrouch)
 			currentSpeed = CrouchSpeed;
 		else
-			currentSpeed = isSprinting ? SprintSpeed : Speed;
+			currentSpeed = (isSprinting ? SprintSpeed : Speed) * weaponMod;
 
 		// 4. VISUALS & COLLISIONS (Crouching Height)
 		if (wantsToCrouch || _isSliding)
@@ -150,6 +174,20 @@ public partial class Player : CharacterBody3D
 		{
 			velocity.Y = JumpVelocity;
 			_isSliding = false; // Jumping cancels a slide
+		}
+		
+		// 6. CLIMBING APPLICATION
+		if (wantsToClimb)
+		{
+			_isClimbing = true;
+			_climbTimer += fDelta;
+			velocity.Y = WallClimbSpeed;
+		}
+		else
+		{
+			_isClimbing = false;
+			if (IsOnFloor()) _climbTimer = 0.0f;
+			if (!IsOnFloor()) velocity += GetGravity() * fDelta;
 		}
 		
 		// 6. MOVEMENT APPLICATION

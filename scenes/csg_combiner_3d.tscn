@@ -2,6 +2,7 @@
 
 [ext_resource type="Shader" uid="uid://c1dtxl1ib11q8" path="res://materials/shaderMaterials/new_shader.gdshader" id="1_k5axi"]
 [ext_resource type="Script" uid="uid://buarja67m5a01" path="res://scripts/Player.cs" id="2_0ah3i"]
+[ext_resource type="Script" uid="uid://81awe01vt5jq" path="res://scenes/WeaponManager.cs" id="3_0ah3i"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_wa3xy"]
 render_priority = 0
@@ -36,7 +37,10 @@ material = SubResource("ShaderMaterial_wa3xy")
 [node name="CharacterBody3D" type="CharacterBody3D" parent="." unique_id=1811862227]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
 script = ExtResource("2_0ah3i")
+UseDynamicFov = true
 ConstantFov = 90.0
+WallClimbSpeed = 3.0
+MaxClimbTime = 1.5
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="CharacterBody3D" unique_id=1637858662]
 shape = SubResource("CapsuleShape3D_87teg")
@@ -45,6 +49,9 @@ shape = SubResource("CapsuleShape3D_87teg")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 
 [node name="Camera3D" type="Camera3D" parent="CharacterBody3D/Head" unique_id=1180421737]
+
+[node name="Node3D" type="Node3D" parent="CharacterBody3D/Head/Camera3D" unique_id=1135636147]
+script = ExtResource("3_0ah3i")
 
 [node name="CeilingChecker" type="RayCast3D" parent="CharacterBody3D" unique_id=1749040865]
 target_position = Vector3(0, 2, 0)
@@ -65,6 +72,12 @@ material = SubResource("StandardMaterial3D_k5axi")
 transform = Transform3D(0.70710677, 0, 0.70710677, 0, 1, 0, -0.70710677, 0, 0.70710677, -4.1000004, 1.1, -3.4999998)
 use_collision = true
 size = Vector3(2, 2, 1)
+material = SubResource("StandardMaterial3D_k5axi")
+
+[node name="Cube4" type="CSGBox3D" parent="." unique_id=223967139]
+transform = Transform3D(0.7071067, 0, -0.7071068, 0, 1, 0, 0.7071068, 0, 0.7071067, 4.3062077, 4.1, -3.4999998)
+use_collision = true
+size = Vector3(2, 8, 1)
 material = SubResource("StandardMaterial3D_k5axi")
 
 [node name="Cube3" type="CSGBox3D" parent="." unique_id=549451811]
