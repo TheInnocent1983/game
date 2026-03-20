@@ -10,6 +10,12 @@ public partial class Player : CharacterBody3D
 	[Export] public float CrouchSpeed = 2.5f;
 	[Export] public bool AutoRunByDefault = false;
 	
+	[ExportGroup("Slide Settings")]
+	[Export] public float SlideFriction = 4.0f;
+	private bool _isSliding = false;
+	private Vector3 _slideDirection = Vector3.Zero;
+	private float _currentSlideSpeed = 0f;
+	
 	[ExportGroup("Jump Force")]
 	[Export] public float JumpVelocity = 4.5f;
 	
@@ -38,33 +44,26 @@ public partial class Player : CharacterBody3D
 	
 	public override void _Ready()
 	{
-		// Finding our nodes. '$' in GDScript becomes 'GetNode' in C#
 		_head = GetNode<Node3D>("Head");
 		_camera = GetNode<Camera3D>("Head/Camera3D");
 		_collisionShape = GetNode<CollisionShape3D>("CollisionShape3D");
-		
 		_ceilingChecker = GetNode<RayCast3D>("CeilingChecker");
 		
 		Input.MouseMode = Input.MouseModeEnum.Captured;
 		_defaultHeadY = _head.Position.Y;
 	}
 	
-		public override void _UnhandledInput(InputEvent @event)
+	public override void _UnhandledInput(InputEvent @event)
+	{
+		if (@event is InputEventMouseMotion mouseMotion)
 		{
-			if (@event is InputEventMouseMotion mouseMotion)
-			{
-				// Rotate the whole body left/right
-				RotateY(-mouseMotion.Relative.X * Sensitivity);
-				
-				// Rotate ONLY the head up/down
-				Vector3 headRotation = _head.Rotation;
-				headRotation.X -= mouseMotion.Relative.Y * Sensitivity;
-				
-				// Limit looking up/down so you don't flip upside down
-				headRotation.X = Mathf.Clamp(headRotation.X, Mathf.DegToRad(-89), Mathf.DegToRad(89));
-				_head.Rotation = headRotation;
-			}
+			RotateY(-mouseMotion.Relative.X * Sensitivity);
+			Vector3 headRotation = _head.Rotation;
+			headRotation.X -= mouseMotion.Relative.Y * Sensitivity;
+			headRotation.X = Mathf.Clamp(headRotation.X, Mathf.DegToRad(-89), Mathf.DegToRad(89));
+			_head.Rotation = headRotation;
 		}
+	}
 	
 	public override void _PhysicsProcess(double delta)
 	{
@@ -73,78 +72,109 @@ public partial class Player : CharacterBody3D
 		
 		Vector3 velocity = Velocity;
 		float currentSpeed = Speed;
+		Vector3 headPos = _head.Position;
+		var capsule = _collisionShape.Shape as CapsuleShape3D;
+
+		// 1. INPUTS
+		Vector2 inputDir = Input.GetVector("move_left", "move_right", "move_forward", "move_backward");
+		bool isMovingForward = inputDir.Y < 0;
+		bool isSprinting = isMovingForward && (Input.IsActionPressed("sprint") || AutoRunByDefault);
 		
-		// 1. Check for Toggle Input
 		if (Input.IsActionJustPressed("crouch_toggle"))
 			_isCrouching = !_isCrouching;
 		
 		if (_isCrouching && Input.IsActionJustPressed("crouch_hold"))
-		{
 			_isCrouching = false;
-		}
 		
-		bool holdingCrouch = Input.IsActionPressed("crouch_hold");
-		bool underCeiling = _ceilingChecker.IsColliding();	
-		bool wantsToCrouch = _isCrouching || holdingCrouch || underCeiling;
-		Vector3 headPos = _head.Position;
+		bool holdingCrouch = Input.IsActionPressed("crouch_hold") || _isCrouching;
+		bool underCeiling = _ceilingChecker.IsColliding();
+		bool wantsToCrouch = holdingCrouch || underCeiling;
 
-		var capsule = _collisionShape.Shape as CapsuleShape3D;
-
-		// 3. Get Input and calculate direction
-		Vector2 inputDir = Input.GetVector("move_left", "move_right", "move_forward", "move_backward");
-		bool isMovingForward = inputDir.Y < 0;
-		
-		if (wantsToCrouch)
+		// 2. SLIDE LOGIC (The "Brain")
+		// Trigger Slide: Only if sprinting, on floor, and just hit a crouch key
+		if (isSprinting && IsOnFloor() && (Input.IsActionJustPressed("crouch_hold") || Input.IsActionJustPressed("crouch_toggle")))
 		{
-			currentSpeed = CrouchSpeed;
-			headPos.Y = Mathf.Lerp(headPos.Y, _defaultHeadY - CrouchHeight, (float)delta * CrouchTransitionSpeed);
+			if (!_isSliding)
+			{
+				_isSliding = true;
+				_currentSlideSpeed = SprintSpeed;
+				_slideDirection = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
+			}
+		}
+
+		// 2. ACTIVE SLIDE HANDLING
+		if (_isSliding)
+		{
+			// Decelerate the slide speed
+			_currentSlideSpeed = Mathf.MoveToward(_currentSlideSpeed, CrouchSpeed, (float)delta * SlideFriction);
 			
-			if (capsule != null)
-				capsule.Height = Mathf.Lerp(capsule.Height, 1.0f, (float)delta * CrouchTransitionSpeed);	
+			// NEW: If we hit the bottom speed, STOP sliding and return control to the player
+			if (_currentSlideSpeed <= CrouchSpeed)
+			{
+				_isSliding = false;
+			}
+
+			// Exit slide if player lets go of crouch (and isn't stuck under a ceiling)
+			if (!holdingCrouch && !underCeiling)
+			{
+				_isSliding = false;
+			}
+		}
+
+		// 3. SPEED RESOLUTION
+		if (_isSliding)
+			currentSpeed = _currentSlideSpeed;
+		else if (wantsToCrouch)
+			currentSpeed = CrouchSpeed;
+		else
+			currentSpeed = isSprinting ? SprintSpeed : Speed;
+
+		// 4. VISUALS & COLLISIONS (Crouching Height)
+		if (wantsToCrouch || _isSliding)
+		{
+			headPos.Y = Mathf.Lerp(headPos.Y, _defaultHeadY - CrouchHeight, (float)delta * CrouchTransitionSpeed);
+			if (capsule != null) capsule.Height = Mathf.Lerp(capsule.Height, 1.0f, (float)delta * CrouchTransitionSpeed);    
 		}
 		else 
 		{
-			if (isMovingForward && (Input.IsActionPressed("sprint") || AutoRunByDefault))
-				currentSpeed = SprintSpeed;
 			headPos.Y = Mathf.Lerp(headPos.Y, _defaultHeadY, (float)delta * CrouchTransitionSpeed);
-			if (capsule != null)
-				capsule.Height = Mathf.Lerp(capsule.Height, 2.0f, (float)delta * CrouchTransitionSpeed);
+			if (capsule != null) capsule.Height = Mathf.Lerp(capsule.Height, 2.0f, (float)delta * CrouchTransitionSpeed);
 		}
 		_head.Position = headPos;
-		
-		// 1. Add Gravity if not on the floor
+
+		// 5. PHYSICS (Gravity & Jump)
 		if (!IsOnFloor())
 			velocity.Y -= gravity * (float)delta;
 			
-		// 2. Handle Jump
 		if (Input.IsActionJustPressed("jump") && IsOnFloor())
+		{
 			velocity.Y = JumpVelocity;
+			_isSliding = false; // Jumping cancels a slide
+		}
 		
-		// This math aligns your movement with where you are looking
+		// 6. MOVEMENT APPLICATION
 		Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
 		float acceleration = 10.0f;
 		
-		if (direction != Vector3.Zero)
+		if (_isSliding)
+		{
+			// Use locked slide direction and current slide speed
+			velocity.X = _slideDirection.X * currentSpeed;
+			velocity.Z = _slideDirection.Z * currentSpeed;
+		}
+		else if (direction != Vector3.Zero)
 		{
 			velocity.X = Mathf.Lerp(velocity.X, direction.X * currentSpeed, (float)delta * acceleration);
-    		velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * currentSpeed, (float)delta * acceleration);
+			velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * currentSpeed, (float)delta * acceleration);
 		}
 		else
 		{
-			// Smoothly slow down to a stop
-			velocity.X = Mathf.MoveToward(Velocity.X, 0, Speed * (float)delta * 10.0f);
-    		velocity.Z = Mathf.MoveToward(Velocity.Z, 0, Speed * (float)delta * 10.0f);
+			velocity.X = Mathf.MoveToward(velocity.X, 0, Speed * (float)delta * 10.0f);
+			velocity.Z = Mathf.MoveToward(velocity.Z, 0, Speed * (float)delta * 10.0f);
 		}
 		
-		float currentFov;
-		
-		if (!UseDynamicFov) 
-			currentFov = ConstantFov;
-		else
-		{
-			bool isActuallySprinting = currentSpeed == SprintSpeed && direction != Vector3.Zero;
-			currentFov = isActuallySprinting ? SprintFov : DefaultFov;
-		}
+		// 7. FOV & FINALIZATION
+		float currentFov = (!UseDynamicFov) ? ConstantFov : (currentSpeed > Speed ? SprintFov : DefaultFov);
 		_camera.Fov = Mathf.Lerp(_camera.Fov, currentFov, (float)delta * FovChangeSpeed);
 		
 		Velocity = velocity;
