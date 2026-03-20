@@ -119,9 +119,6 @@ public partial class Player : CharacterBody3D
 		// 2. Handle Jump
 		if (Input.IsActionJustPressed("jump") && IsOnFloor())
 			velocity.Y = JumpVelocity;
-			
-		// 3. Get Input and calculate direction
-		Vector2 inputDir = Input.GetVector("move_left", "move_right", "move_forward", "move_backward");
 		
 		// This math aligns your movement with where you are looking
 		Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
