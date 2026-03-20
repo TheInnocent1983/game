@@ -8,6 +8,7 @@ public partial class Player : CharacterBody3D
 	[Export] public float Speed = 5.0f;
 	[Export] public float SprintSpeed = 8.0f;
 	[Export] public float CrouchSpeed = 2.5f;
+	[Export] public bool AutoRunByDefault = false;
 	
 	[ExportGroup("Jump Force")]
 	[Export] public float JumpVelocity = 4.5f;
@@ -99,7 +100,7 @@ public partial class Player : CharacterBody3D
 		}
 		else 
 		{
-			if (Input.IsActionPressed("sprint"))
+			if (Input.IsActionPressed("sprint") || AutoRunByDefault)
 				currentSpeed = SprintSpeed;
 			headPos.Y = Mathf.Lerp(headPos.Y, _defaultHeadY, (float)delta * CrouchTransitionSpeed);
 			if (capsule != null)
@@ -139,7 +140,7 @@ public partial class Player : CharacterBody3D
 			currentFov = ConstantFov;
 		else
 		{
-			bool isSprinting = Input.IsActionPressed("sprint") && direction != Vector3.Zero && !wantsToCrouch;
+			bool isSprinting = (AutoRunByDefault || Input.IsActionPressed("sprint")) && direction != Vector3.Zero && !wantsToCrouch;
 			currentFov = isSprinting ? SprintFov : DefaultFov;
 		}
 		_camera.Fov = Mathf.Lerp(_camera.Fov, currentFov, (float)delta * FovChangeSpeed);
