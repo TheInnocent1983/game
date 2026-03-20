@@ -45,9 +45,6 @@ public partial class Player : CharacterBody3D
 	private float _climbTimer = 0.0f;
 	private bool _isClimbing = false;
 	
-	// Reference
-	private WeaponManager _weaponManager;
-	
 	// Gravity pulled from project settings
 	public float gravity = ProjectSettings.GetSetting("physics/3d/default_gravity").AsSingle();
 	
@@ -60,9 +57,6 @@ public partial class Player : CharacterBody3D
 		
 		Input.MouseMode = Input.MouseModeEnum.Captured;
 		_defaultHeadY = _head.Position.Y;
-		
-		// Reference
-		_weaponManager = GetNode<WeaponManager>("Head/Camera3D/WeaponManager");
 	}
 	
 	public override void _UnhandledInput(InputEvent @event)
@@ -144,14 +138,12 @@ public partial class Player : CharacterBody3D
 		}
 
 		// 3. SPEED RESOLUTION
-		float weaponMod = _weaponManager.GetCurrentWeapon().SpeedMultiplier;
-		
 		if (_isSliding)
 			currentSpeed = _currentSlideSpeed;
 		else if (wantsToCrouch)
 			currentSpeed = CrouchSpeed;
 		else
-			currentSpeed = (isSprinting ? SprintSpeed : Speed) * weaponMod;
+			currentSpeed = isSprinting ? SprintSpeed : Speed;
 
 		// 4. VISUALS & COLLISIONS (Crouching Height)
 		if (wantsToCrouch || _isSliding)
@@ -181,16 +173,16 @@ public partial class Player : CharacterBody3D
 		{
 			_isClimbing = true;
 			_climbTimer += fDelta;
-			velocity.Y = WallClimbSpeed;
+			velocity.Y = WallClimbSpeed; // This overrides Step 5 gravity while climbing
 		}
-		else
+		 else
 		{
 			_isClimbing = false;
 			if (IsOnFloor()) _climbTimer = 0.0f;
 			if (!IsOnFloor()) velocity += GetGravity() * fDelta;
-		}
+		} 
 		
-		// 6. MOVEMENT APPLICATION
+		// 7. MOVEMENT APPLICATION
 		Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
 		float acceleration = 10.0f;
 		
