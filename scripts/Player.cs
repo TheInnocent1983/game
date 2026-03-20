@@ -122,17 +122,18 @@ public partial class Player : CharacterBody3D
 		
 		// This math aligns your movement with where you are looking
 		Vector3 direction = (Transform.Basis * new Vector3(inputDir.X, 0, inputDir.Y)).Normalized();
+		float acceleration = 10.0f;
 		
 		if (direction != Vector3.Zero)
 		{
-			velocity.X = direction.X * currentSpeed;
-			velocity.Z = direction.Z * currentSpeed;
+			velocity.X = Mathf.Lerp(velocity.X, direction.X * currentSpeed, (float)delta * acceleration);
+    		velocity.Z = Mathf.Lerp(velocity.Z, direction.Z * currentSpeed, (float)delta * acceleration);
 		}
 		else
 		{
 			// Smoothly slow down to a stop
-			velocity.X = Mathf.MoveToward(Velocity.X, 0, Speed);
-			velocity.Z = Mathf.MoveToward(Velocity.Z, 0, Speed);
+			velocity.X = Mathf.MoveToward(Velocity.X, 0, Speed * (float)delta * 10.0f);
+    		velocity.Z = Mathf.MoveToward(Velocity.Z, 0, Speed * (float)delta * 10.0f);
 		}
 		
 		float currentFov;
