@@ -89,6 +89,10 @@ public partial class Player : CharacterBody3D
 		Vector3 headPos = _head.Position;
 
 		var capsule = _collisionShape.Shape as CapsuleShape3D;
+
+		// 3. Get Input and calculate direction
+		Vector2 inputDir = Input.GetVector("move_left", "move_right", "move_forward", "move_backward");
+		bool isMovingForward = inputDir.Y < 0;
 		
 		if (wantsToCrouch)
 		{
@@ -100,7 +104,7 @@ public partial class Player : CharacterBody3D
 		}
 		else 
 		{
-			if (Input.IsActionPressed("sprint") || AutoRunByDefault)
+			if (isMovingForward && (Input.IsActionPressed("sprint") || AutoRunByDefault))
 				currentSpeed = SprintSpeed;
 			headPos.Y = Mathf.Lerp(headPos.Y, _defaultHeadY, (float)delta * CrouchTransitionSpeed);
 			if (capsule != null)
@@ -140,8 +144,8 @@ public partial class Player : CharacterBody3D
 			currentFov = ConstantFov;
 		else
 		{
-			bool isSprinting = (AutoRunByDefault || Input.IsActionPressed("sprint")) && direction != Vector3.Zero && !wantsToCrouch;
-			currentFov = isSprinting ? SprintFov : DefaultFov;
+			bool isActuallySprinting = currentSpeed == SprintSpeed && direction != Vector3.Zero;
+			currentFov = isActuallySprinting ? SprintFov : DefaultFov;
 		}
 		_camera.Fov = Mathf.Lerp(_camera.Fov, currentFov, (float)delta * FovChangeSpeed);
 		
