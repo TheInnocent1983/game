@@ -1,6 +1,8 @@
 using Godot;
 using System;
 
+public enum FireMode { Single, Double, Triple, Auto }
+
 public partial class Player : CharacterBody3D
 {
 	// 'Export' let's you change these values in the Godot Inspector
@@ -32,6 +34,13 @@ public partial class Player : CharacterBody3D
 	[Export] public float WallClimbSpeed = 4.0f;
 	[Export] public float MaxClimbTime = 3.0f;
 	
+	[ExportGroup("Shooting Settings")]
+	[Export] public FireMode CurrentMode = FireMode.Single;
+	[Export] public float FireRate = 0.15f; // Seconds between shots
+	
+	private float _fireTimer = 0f;
+	private int _burstCount = 0; // Tracks bullets left in a burst
+	
 	// These represents the "Head" and "Camera" nodes
 	private Node3D _head;
 	private Camera3D _camera;
@@ -45,6 +54,11 @@ public partial class Player : CharacterBody3D
 	private float _climbTimer = 0.0f;
 	private bool _isClimbing = false;
 	
+	// Weapon Logic
+	private AnimationPlayer _gunAnim;
+	private RayCast3D _gunBarrel;
+	private PackedScene _bulletScene;
+	
 	// Gravity pulled from project settings
 	public float gravity = ProjectSettings.GetSetting("physics/3d/default_gravity").AsSingle();
 	
@@ -54,6 +68,10 @@ public partial class Player : CharacterBody3D
 		_camera = GetNode<Camera3D>("Head/Camera3D");
 		_collisionShape = GetNode<CollisionShape3D>("CollisionShape3D");
 		_ceilingChecker = GetNode<RayCast3D>("CeilingChecker");
+		
+		_gunAnim = GetNode<AnimationPlayer>("Head/Camera3D/AR/AnimationPlayer");
+		_gunBarrel = GetNode<RayCast3D>("Head/Camera3D/AR/RayCast3D");
+		_bulletScene = GD.Load<PackedScene>("res://scenes/bullet.tscn");
 		
 		Input.MouseMode = Input.MouseModeEnum.Captured;
 		_defaultHeadY = _head.Position.Y;
@@ -203,11 +221,88 @@ public partial class Player : CharacterBody3D
 			velocity.Z = Mathf.MoveToward(velocity.Z, 0, Speed * (float)delta * 10.0f);
 		}
 		
-		// 7. FOV & FINALIZATION
+		// 7. REDUCE THE TIMER EVERY FRAME
+		// --- Fix 2: Handle Fire Timer ---
+		if (_fireTimer > 0) _fireTimer -= (float)delta;
+
+		// --- Fix 3: Handle Input Logic ---
+		// We only trigger if the timer is ready
+		if (_fireTimer <= 0)
+		{
+			bool wantsToShoot = (CurrentMode == FireMode.Auto) 
+				? Input.IsActionPressed("shoot") 
+				: Input.IsActionJustPressed("shoot");
+
+			if (wantsToShoot)
+			{
+				StartShooting();
+			}
+		}
+		
+		// 8. FOV & FINALIZATION
 		float currentFov = (!UseDynamicFov) ? ConstantFov : (currentSpeed > Speed ? SprintFov : DefaultFov);
 		_camera.Fov = Mathf.Lerp(_camera.Fov, currentFov, (float)delta * FovChangeSpeed);
 		
+		// 9. WEAPON SHOOTING ANIMATION LOGIC
+		if (_gunAnim != null && Input.IsActionJustPressed("shoot"))
+		{
+			_gunAnim.Play("Shoot");
+
+			// Instantiate the bullet
+			// We use 'var' or 'Node3D' here to tell C# what kind of object it is
+			var bulletInstance = _bulletScene.Instantiate<Node3D>();
+
+			// Set Position and Rotation to match the barrel exactly
+			bulletInstance.GlobalPosition = _gunBarrel.GlobalPosition;
+			bulletInstance.GlobalTransform = _gunBarrel.GlobalTransform;
+
+			// Add to the scene tree (using GetParent() to put it in the world, not on the gun)
+			GetParent().AddChild(bulletInstance);
+		}
+		
 		Velocity = velocity;
 		MoveAndSlide();
+	}
+	
+	private void StartShooting()
+	{
+		_fireTimer = FireRate;
+		switch (CurrentMode)
+		{
+			case FireMode.Single:
+			case FireMode.Auto:
+				Shoot();
+				break;
+			case FireMode.Double:
+				_burstCount = 2;
+				ShootBurst();
+				break;
+			case FireMode.Triple:
+				_burstCount = 3;
+				ShootBurst();
+				break;
+		}
+	}
+
+	private void Shoot()
+	{
+		if (_gunAnim == null || _bulletScene == null) return;
+		
+		_gunAnim.Stop();
+		_gunAnim.Play("Shoot");
+
+		var bullet = _bulletScene.Instantiate<Node3D>();
+		bullet.GlobalTransform = _gunBarrel.GlobalTransform;
+		GetTree().Root.AddChild(bullet);
+	}
+
+	private async void ShootBurst()
+	{
+		_fireTimer = FireRate * 2; 
+		for (int i = 0; i < _burstCount; i++)
+		{
+			Shoot();
+			await ToSignal(GetTree().CreateTimer(0.06f), "timeout");
+		}
 	}
 }

@@ -2,6 +2,7 @@
 
 [ext_resource type="Shader" uid="uid://c1dtxl1ib11q8" path="res://materials/shaderMaterials/new_shader.gdshader" id="1_k5axi"]
 [ext_resource type="Script" uid="uid://buarja67m5a01" path="res://scripts/Player.cs" id="2_0ah3i"]
+[ext_resource type="PackedScene" uid="uid://icckjbifvuwi" path="res://scenes/ar.tscn" id="3_0ah3i"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_wa3xy"]
 render_priority = 0
@@ -41,6 +42,7 @@ UseDynamicFov = true
 ConstantFov = 90.0
 WallClimbSpeed = 3.0
 MaxClimbTime = 1.5
+CurrentMode = 3
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="CharacterBody3D" unique_id=1637858662]
 shape = SubResource("CapsuleShape3D_87teg")
@@ -49,6 +51,9 @@ shape = SubResource("CapsuleShape3D_87teg")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 
 [node name="Camera3D" type="Camera3D" parent="CharacterBody3D/Head" unique_id=1180421737]
+
+[node name="AR" parent="CharacterBody3D/Head/Camera3D" unique_id=669362256 instance=ExtResource("3_0ah3i")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0.2083106, -0.58404636, -0.4192242)
 
 [node name="CeilingChecker" type="RayCast3D" parent="CharacterBody3D" unique_id=1749040865]
 target_position = Vector3(0, 2, 0)

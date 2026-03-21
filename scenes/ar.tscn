@@ -1,0 +1,55 @@
+[gd_scene format=3 uid="uid://icckjbifvuwi"]
+
+[ext_resource type="PackedScene" uid="uid://bejt04rac8u2a" path="res://weapon/AR.fbx" id="1_nu2j6"]
+
+[sub_resource type="Animation" id="Animation_c51j8"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Armature/Skeleton3D/Cube_005:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_nu2j6"]
+resource_name = "Shoot"
+length = 0.1
+step = 0.01
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Armature/Skeleton3D/Cube_005:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.01, 0.1),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0, -0.001), Vector3(0, 0, 0)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_c51j8"]
+_data = {
+&"RESET": SubResource("Animation_c51j8"),
+&"Shoot": SubResource("Animation_nu2j6")
+}
+
+[node name="AR" unique_id=669362256 instance=ExtResource("1_nu2j6")]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 0, 0, 0)
+
+[node name="Cube_005" parent="Armature/Skeleton3D" parent_id_path=PackedInt32Array(1174007648) index="0" unique_id=2082680690]
+transform = Transform3D(0.39999998, 3.4105604e-15, -3.5527137e-15, 3.9316402e-15, 0.39999998, -7.1054274e-15, -3.5527137e-15, 0, 0.39999998, 0, 0, 0)
+cast_shadow = 0
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." index="1" unique_id=1522414120]
+libraries/ = SubResource("AnimationLibrary_c51j8")
+
+[node name="RayCast3D" type="RayCast3D" parent="." index="2" unique_id=1999657391]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 1.2145951, 0.3871183, 5.3091636e-08)
+target_position = Vector3(0, 0, -1)
